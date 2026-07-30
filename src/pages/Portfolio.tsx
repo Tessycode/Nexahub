@@ -1,5 +1,6 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion, useInView, AnimatePresence } from 'framer-motion'
+import { portfolio as portfolioApi } from '../lib/api'
 
 interface Props { onNavigate: (page: string) => void }
 
@@ -32,244 +33,64 @@ type Project = {
   duration: string
   large: boolean
 }
-
-const projects: Project[] = [
-  {
-    id: 'paragon',
-    title: 'Paragon Pay',
-    client: 'Paragon Financial Technologies Ltd',
-    category: 'Fintech',
-    services: ['Product Design', 'Engineering', 'Branding', 'Cloud Infrastructure'],
-    tagline: 'A cross-border payment platform for SMEs.',
-    description: 'Paragon Pay needed to enter a crowded fintech market with a product that SMEs would actually use — not a simplified version of enterprise banking software.',
-    challenge: 'SME cross-border payments were expensive, slow, and opaque. Existing solutions required lengthy onboarding, didn\'t support the currencies SMEs needed, and lacked real-time transaction visibility.',
-    approach: 'We started with extensive user research across 40 SME finance leads in the UK and Nigeria. The insight that shaped everything: users didn\'t want more features, they wanted certainty — knowing exactly what they\'d pay, exactly when funds would arrive. We designed around that.',
-    outcome: 'Launched in 14 weeks from kickoff. Product Hunt #3 Product of the Day. Series A raised within 6 months of launch.',
-    metrics: [
-      { label: 'Transactions, year 1', value: '3.2M' },
-      { label: 'Time to Series A', value: '6 mo' },
-      { label: 'NPS at launch', value: '71' },
-      { label: 'Onboarding time', value: '< 8 min' },
-    ],
-    heroImg: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=1200&h=700&fit=crop&auto=format',
-    galleryImgs: [
-      'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&h=500&fit=crop&auto=format',
-      'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=500&fit=crop&auto=format',
-      'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=800&h=500&fit=crop&auto=format',
-    ],
-    palette: ['#0A1628', '#1A3A6B', '#2563EB', '#DBEAFE', '#F8FAFC'],
-    year: '2024',
-    duration: '14 weeks',
-    large: true,
-  },
-  {
-    id: 'meridian',
-    title: 'Meridian Health',
-    client: 'Meridian Health Technologies',
-    category: 'Healthcare',
-    services: ['UI/UX Design', 'Mobile App', 'Branding'],
-    tagline: 'Patient-facing app for chronic disease management.',
-    description: 'Meridian had clinical evidence that their approach to chronic disease management worked. What they lacked was a mobile product that patients would actually use consistently.',
-    challenge: 'Patient adherence to self-monitoring protocols drops sharply after 3 weeks. Existing apps were clinical in feel — designed by compliance teams, not patient experience teams — and reinforced the idea that managing a chronic condition is a burden.',
-    approach: 'We embedded with clinical staff and interviewed 22 patients across three hospitals. The key finding: patients didn\'t want to be reminded of their condition. They wanted tools that helped them forget about it — that integrated into life rather than interrupting it.',
-    outcome: 'Launched on iOS and Android simultaneously. Featured in TechCrunch Health. NHS pilot programme secured within 8 months.',
-    metrics: [
-      { label: 'Active patients, 8 months', value: '14k' },
-      { label: 'Manual data entry reduction', value: '70%' },
-      { label: '90-day adherence rate', value: '68%' },
-      { label: 'App Store rating', value: '4.8 ★' },
-    ],
-    heroImg: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=1200&h=700&fit=crop&auto=format',
-    galleryImgs: [
-      'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=800&h=500&fit=crop&auto=format',
-      'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&h=500&fit=crop&auto=format',
-      'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=500&fit=crop&auto=format',
-    ],
-    palette: ['#0F1B14', '#14532D', '#16A34A', '#BBF7D0', '#F0FDF4'],
-    year: '2024',
-    duration: '20 weeks',
-    large: false,
-  },
-  {
-    id: 'fieldstone',
-    title: 'Fieldstone Capital',
-    client: 'Fieldstone Capital Management',
-    category: 'Asset Management',
-    services: ['Website Development', 'Branding', 'SEO'],
-    tagline: 'Brand refresh and new website for a £2.4bn AUM firm.',
-    description: 'Fieldstone\'s existing website had been built by an internal team four years prior. It communicated stability but not sophistication — and it wasn\'t converting the institutional capital introductions they needed.',
-    challenge: 'Institutional investors evaluate asset managers online before agreeing to meetings. Fieldstone\'s previous website didn\'t reflect the calibre of their investment process or team. Enquiries were coming in, but they were predominantly from retail investors outside their target mandate.',
-    approach: 'We repositioned the brand around investment philosophy and track record — the things institutional investors actually care about. The new site led with performance attribution and philosophy rather than credentials and team bios.',
-    outcome: 'New site launched January 2024. Within 90 days, inbound institutional enquiries increased 89%.',
-    metrics: [
-      { label: 'Inbound enquiries, Q1', value: '+89%' },
-      { label: 'Avg. session duration', value: '+142%' },
-      { label: 'Organic search traffic', value: '+67%' },
-      { label: 'Pages per session', value: '5.4' },
-    ],
-    heroImg: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=1200&h=700&fit=crop&auto=format',
-    galleryImgs: [
-      'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&h=500&fit=crop&auto=format',
-      'https://images.unsplash.com/photo-1542744094-3a31f272c490?w=800&h=500&fit=crop&auto=format',
-      'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=500&fit=crop&auto=format',
-    ],
-    palette: ['#0C0D0F', '#1C1F26', '#374151', '#9CA3AF', '#F9FAFB'],
-    year: '2023',
-    duration: '10 weeks',
-    large: false,
-  },
-  {
-    id: 'clearpath',
-    title: 'Clearpath AI',
-    client: 'Clearpath Technologies Ltd',
-    category: 'Enterprise SaaS',
-    services: ['Product Design', 'Engineering', 'Cloud Infrastructure'],
-    tagline: 'AI-powered procurement platform for enterprise.',
-    description: 'Clearpath had developed an ML model that could automate 80% of supplier evaluation decisions. What they needed was a product that enterprise procurement teams would actually adopt.',
-    challenge: 'Enterprise procurement is conservative. Procurement leads are accountable for supplier decisions and needed to trust the AI\'s recommendations enough to act on them. The previous interface showed model outputs without explanation — confidence scores with no reasoning.',
-    approach: 'We built explainability into the core UX — every recommendation came with a structured rationale, audit trail, and confidence breakdown. We also designed for the reviewer workflow, not the decision-maker workflow: most procurement activity happens at team level, not director level.',
-    outcome: '£1.1M ARR at launch. 40+ enterprise clients within 18 months. Currently processing £2.4B in annual procurement decisions.',
-    metrics: [
-      { label: 'ARR at launch', value: '£1.1M' },
-      { label: 'Enterprise clients', value: '40+' },
-      { label: 'Procurement processed', value: '£2.4B' },
-      { label: 'Onboarding time', value: '< 2 weeks' },
-    ],
-    heroImg: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1200&h=700&fit=crop&auto=format',
-    galleryImgs: [
-      'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&h=500&fit=crop&auto=format',
-      'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&h=500&fit=crop&auto=format',
-      'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&h=500&fit=crop&auto=format',
-    ],
-    palette: ['#09090B', '#18181B', '#6366F1', '#A5B4FC', '#EEF2FF'],
-    year: '2023',
-    duration: '24 weeks',
-    large: true,
-  },
-  {
-    id: 'lumina',
-    title: 'Lumina Group',
-    client: 'Lumina Property Developments Ltd',
-    category: 'Real Estate',
-    services: ['Website Development', 'Digital Marketing', 'Branding', 'SEO'],
-    tagline: 'Digital presence for a premium property developer.',
-    description: 'Lumina were bringing premium residential developments to market in a price bracket where buyers expect a brand experience to match the product.',
-    challenge: 'Property developer websites are notoriously poor. Most feel like database front-ends. Lumina\'s previous digital presence didn\'t communicate the quality of their developments and was generating volume enquiries rather than qualified buyers.',
-    approach: 'We positioned Lumina as a lifestyle brand first and a developer second. Photography-led editorial layouts, neighbourhood storytelling, and a buyer journey designed around aspiration rather than specification. The lead form was removed from the homepage entirely.',
-    outcome: '£18M in attributable pipeline from digital channels in year one. The quality of leads — as measured by sales conversion rate — improved 3.4x.',
-    metrics: [
-      { label: 'Digital pipeline, year 1', value: '£18M' },
-      { label: 'Lead quality improvement', value: '3.4×' },
-      { label: 'Avg. time on site', value: '5m 20s' },
-      { label: 'Organic visibility', value: '+220%' },
-    ],
-    heroImg: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=1200&h=700&fit=crop&auto=format',
-    galleryImgs: [
-      'https://images.unsplash.com/photo-1542744094-3a31f272c490?w=800&h=500&fit=crop&auto=format',
-      'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&h=500&fit=crop&auto=format',
-      'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=500&fit=crop&auto=format',
-    ],
-    palette: ['#0D0B0A', '#1C1916', '#CA8A04', '#FDE68A', '#FEFCE8'],
-    year: '2023',
-    duration: '16 weeks',
-    large: false,
-  },
-  {
-    id: 'vantage',
-    title: 'Vantage Labs',
-    client: 'Vantage Industrial Technologies',
-    category: 'B2B Software',
-    services: ['UI/UX Design', 'Engineering'],
-    tagline: 'Industrial IoT dashboard redesign.',
-    description: 'Vantage\'s industrial monitoring platform had 300+ enterprise customers who depended on it for real-time operations visibility. The dashboard was complex, slow, and required weeks of training for new users.',
-    challenge: 'The existing dashboard had accumulated 7 years of features without a coherent information hierarchy. Operators were overwhelmed by data. The most common support ticket type was "I can\'t find X" — for features that existed, just buried.',
-    approach: 'We conducted contextual inquiry with operators in actual industrial settings — not usability labs. We observed how they actually used the tool during their shifts. The key insight: 90% of daily activity concentrated on 20% of the features. We redesigned around that 20%.',
-    outcome: 'NPS improved from 14 to 67 — a 53-point improvement. Average time-to-insight fell from 4 hours to 11 minutes for the most common monitoring tasks.',
-    metrics: [
-      { label: 'NPS improvement', value: '+53 pts' },
-      { label: 'Time-to-insight', value: '11 min' },
-      { label: 'Support tickets', value: '–64%' },
-      { label: 'New user time-to-proficiency', value: '3 days' },
-    ],
-    heroImg: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=1200&h=700&fit=crop&auto=format',
-    galleryImgs: [
-      'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&h=500&fit=crop&auto=format',
-      'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&h=500&fit=crop&auto=format',
-      'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&h=500&fit=crop&auto=format',
-    ],
-    palette: ['#0A0C10', '#1A1D2A', '#0EA5E9', '#BAE6FD', '#F0F9FF'],
-    year: '2022',
-    duration: '18 weeks',
-    large: false,
-  },
-  {
-    id: 'axis',
-    title: 'Axis Studio',
-    client: 'Axis Creative Studios Ltd',
-    category: 'Creative Agency',
-    services: ['Branding', 'Website Development'],
-    tagline: 'Identity and digital presence for a film production company.',
-    description: 'Axis needed a brand identity and website that would help them compete for mid-to-large brand film briefs against more established production companies.',
-    challenge: 'The production company market segments sharply at a certain project size. Below that threshold, clients choose on price. Above it, they choose on portfolio, brand confidence, and cultural fit. Axis wanted to move upmarket and needed a presence that credibly placed them there.',
-    approach: 'We created an identity built around the idea of precise, considered craft — referenced in the wordmark and typographic system — balanced with the energy and confidence that characterises their work. The website led with showreel, not agency biography.',
-    outcome: 'Average project value increased 65% in the 12 months following launch. Won three awards for agency website design.',
-    metrics: [
-      { label: 'Avg. project value', value: '+65%' },
-      { label: 'New business enquiries', value: '+112%' },
-      { label: 'Website awards', value: '3' },
-      { label: 'New enterprise clients', value: '8' },
-    ],
-    heroImg: 'https://images.unsplash.com/photo-1542744094-3a31f272c490?w=1200&h=700&fit=crop&auto=format',
-    galleryImgs: [
-      'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800&h=500&fit=crop&auto=format',
-      'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&h=500&fit=crop&auto=format',
-      'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=500&fit=crop&auto=format',
-    ],
-    palette: ['#0A0A0A', '#1A1A1A', '#E5E5E5', '#F5F5F5', '#FFFFFF'],
-    year: '2022',
-    duration: '8 weeks',
-    large: false,
-  },
-  {
-    id: 'northbank',
-    title: 'NorthBank',
-    client: 'NorthBank Digital Finance',
-    category: 'Fintech',
-    services: ['Product Design', 'Engineering', 'Digital Marketing'],
-    tagline: 'Digital challenger bank for business accounts.',
-    description: 'NorthBank entered the crowded challenger bank market targeting micro-businesses who were frustrated with incumbent bank account fees and poor mobile experiences.',
-    challenge: 'The challenger bank space is extremely competitive. Differentiation can\'t be built on features alone — every feature can be copied. NorthBank needed to build emotional differentiation: the sense that this product was built for them specifically, not adapted from a product built for someone else.',
-    approach: 'We designed the entire onboarding and account management experience around the specific rhythms of micro-business finance: irregular income, invoice timing, VAT preparation, and the psychological burden of money management for solo operators. Every feature was named and framed in micro-business terms, not banking terms.',
-    outcome: '28,000 accounts opened in first six months, 40% ahead of target. Featured in The Guardian Money and Forbes.',
-    metrics: [
-      { label: 'Accounts, 6 months', value: '28k' },
-      { label: 'vs. launch target', value: '+40%' },
-      { label: '90-day retention', value: '78%' },
-      { label: 'App Store rating', value: '4.7 ★' },
-    ],
-    heroImg: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=1200&h=700&fit=crop&auto=format',
-    galleryImgs: [
-      'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=800&h=500&fit=crop&auto=format',
-      'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&h=500&fit=crop&auto=format',
-      'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&h=500&fit=crop&auto=format',
-    ],
-    palette: ['#0C1040', '#1B2880', '#3B5BDB', '#A5B4FC', '#EEF2FF'],
-    year: '2022',
-    duration: '28 weeks',
-    large: true,
-  },
-]
-
-const categories = ['All', 'Fintech', 'Healthcare', 'Enterprise SaaS', 'Real Estate', 'B2B Software', 'Asset Management', 'Creative Agency']
-
 export default function Portfolio({ onNavigate }: Props) {
+  const [projects, setProjects] = useState<Project[]>([])
+  const [categories, setCategories] = useState<string[]>(['All'])
   const [filter, setFilter] = useState('All')
   const [selected, setSelected] = useState<Project | null>(null)
   const [activeGallery, setActiveGallery] = useState(0)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    Promise.all([portfolioApi.list(), portfolioApi.categories()])
+      .then(([projRes, catRes]: [any, any]) => {
+        const projs: Project[] = (projRes.results ?? projRes).map((p: any, i: number) => ({
+          id: p.slug ?? p.id ?? String(i),
+          title: p.title,
+          client: p.client_name ?? p.client ?? '',
+          category: p.category?.name ?? p.category ?? 'General',
+          services: Array.isArray(p.services) ? p.services.map((s: any) => s.name ?? s) : [],
+          tagline: p.tagline ?? p.short_description ?? '',
+          description: p.description ?? '',
+          challenge: p.challenge ?? '',
+          approach: p.approach ?? '',
+          outcome: p.outcome ?? '',
+          metrics: Array.isArray(p.metrics) ? p.metrics : [],
+          heroImg: p.hero_image ?? p.image ?? 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=1200&h=700&fit=crop&auto=format',
+          galleryImgs: Array.isArray(p.gallery_images) ? p.gallery_images.map((g: any) => g.image ?? g) : [],
+          palette: Array.isArray(p.color_palette) ? p.color_palette.map((c: any) => c.hex ?? c) : ['#0A1628', '#1A3A6B', '#2563EB'],
+          year: p.year ?? new Date(p.completed_at ?? Date.now()).getFullYear().toString(),
+          duration: p.duration ?? '',
+          large: p.is_featured ?? i === 0,
+        }))
+        setProjects(projs)
+        const catNames: string[] = ['All', ...(catRes.results ?? catRes).map((c: any) => c.name ?? c)]
+        setCategories(catNames)
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [])
 
   const filtered = filter === 'All' ? projects : projects.filter(p => p.category === filter)
-
   const openProject = (p: Project) => { setSelected(p); setActiveGallery(0) }
+
+  if (loading) {
+    return (
+      <div className="page-enter pt-24">
+        <section className="section-pad">
+          <div className="max-w-7xl mx-auto px-6 lg:px-8">
+            <div className="animate-pulse space-y-6">
+              <div className="h-8 bg-current opacity-10 rounded w-40" />
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {[1,2,3,4,5,6].map(i => <div key={i} className="h-64 bg-current opacity-5 rounded-2xl" />)}
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    )
+  }
+
 
   return (
     <div className="page-enter pt-24">

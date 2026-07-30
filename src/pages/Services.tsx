@@ -1,5 +1,6 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion, useInView } from 'framer-motion'
+import { services as servicesApi } from '../lib/api'
 
 interface Props { onNavigate: (page: string) => void }
 
@@ -13,146 +14,62 @@ function FadeUp({ children, delay = 0, className = '' }: { children: React.React
   )
 }
 
-const services = [
-  {
-    id: '01',
-    title: 'Website Development',
-    category: 'Engineering',
-    summary: 'Commercial websites and complex web applications built for performance, accessibility and long-term maintainability.',
-    detail: [
-      'Architecture review and technology selection',
-      'Custom CMS integration (Sanity, Contentful, WordPress headless)',
-      'Core Web Vitals optimisation — targeting top 10% Lighthouse scores',
-      'Accessibility audit and WCAG 2.1 AA compliance',
-      'CI/CD pipeline setup and managed deployment',
-      '12-month post-launch support and maintenance',
-    ],
-    img: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&h=560&fit=crop&auto=format',
-    tech: ['React', 'Next.js', 'TypeScript', 'Node.js', 'PostgreSQL'],
-  },
-  {
-    id: '02',
-    title: 'Mobile Application Development',
-    category: 'Engineering',
-    summary: 'Native iOS and Android apps, and cross-platform solutions using React Native — built around real user research, not assumed journeys.',
-    detail: [
-      'User research and journey mapping before design begins',
-      'React Native for cross-platform or Swift/Kotlin for native',
-      'Offline-first architecture where appropriate',
-      'App Store and Google Play submission support',
-      'Push notification strategy and implementation',
-      'Analytics integration and funnel tracking',
-    ],
-    img: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=800&h=560&fit=crop&auto=format',
-    tech: ['React Native', 'Swift', 'Kotlin', 'Firebase', 'Expo'],
-  },
-  {
-    id: '03',
-    title: 'UI/UX Design',
-    category: 'Design',
-    summary: 'Research-led product design that converts. We validate assumptions early and iterate quickly — reducing expensive late-stage changes.',
-    detail: [
-      'User research: interviews, surveys, usability testing',
-      'Information architecture and user flow mapping',
-      'High-fidelity Figma prototypes for stakeholder alignment',
-      'Design systems with full component libraries',
-      'Handoff documentation and developer specifications',
-      'A/B testing framework recommendations',
-    ],
-    img: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=800&h=560&fit=crop&auto=format',
-    tech: ['Figma', 'Framer', 'Maze', 'FullStory', 'Hotjar'],
-  },
-  {
-    id: '04',
-    title: 'Graphic Design',
-    category: 'Design',
-    summary: 'Visual communication that works across print and digital. From campaign assets to packaging — consistent, professional, and on-brand.',
-    detail: [
-      'Brand campaign design and art direction',
-      'Social media asset creation and templating',
-      'Print design: brochures, packaging, exhibition materials',
-      'Email template design',
-      'Presentation design (pitch decks, board packs)',
-      'Iconography and illustration',
-    ],
-    img: 'https://images.unsplash.com/photo-1542744094-3a31f272c490?w=800&h=560&fit=crop&auto=format',
-    tech: ['Illustrator', 'Photoshop', 'InDesign', 'After Effects'],
-  },
-  {
-    id: '05',
-    title: 'Business Branding',
-    category: 'Strategy',
-    summary: 'Brand identities built for longevity. Visual systems, positioning frameworks and verbal guidelines that give your business a clear, ownable voice.',
-    detail: [
-      'Brand positioning and competitive differentiation',
-      'Naming and tagline development',
-      'Logo and visual identity system',
-      'Brand guidelines: typography, colour, usage rules',
-      'Verbal identity: tone of voice, messaging frameworks',
-      'Brand launch strategy and rollout support',
-    ],
-    img: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800&h=560&fit=crop&auto=format',
-    tech: ['Brand Strategy', 'Identity Design', 'Copywriting'],
-  },
-  {
-    id: '06',
-    title: 'Digital Marketing',
-    category: 'Growth',
-    summary: 'Integrated campaigns that generate qualified pipeline — not vanity metrics. Strategy, execution, and optimisation under one roof.',
-    detail: [
-      'Paid search (Google Ads, Microsoft Ads)',
-      'Paid social (Meta, LinkedIn, TikTok)',
-      'Content marketing and editorial strategy',
-      'Email marketing and automation (HubSpot, Klaviyo)',
-      'Conversion rate optimisation',
-      'Monthly reporting with attribution modelling',
-    ],
-    img: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=560&fit=crop&auto=format',
-    tech: ['Google Ads', 'Meta', 'HubSpot', 'Klaviyo', 'GA4'],
-  },
-  {
-    id: '07',
-    title: 'SEO Optimisation',
-    category: 'Growth',
-    summary: 'Organic search strategy grounded in technical SEO, content authority and genuine user intent — not shortcuts that risk penalties.',
-    detail: [
-      'Technical audit: crawlability, indexation, Core Web Vitals',
-      'Keyword research and topical authority mapping',
-      'On-page optimisation and schema implementation',
-      'Link acquisition through editorial outreach',
-      'Local SEO for multi-location businesses',
-      'Monthly reporting with rank tracking and traffic attribution',
-    ],
-    img: 'https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?w=800&h=560&fit=crop&auto=format',
-    tech: ['Ahrefs', 'Screaming Frog', 'Search Console', 'Semrush'],
-  },
-  {
-    id: '08',
-    title: 'Cloud Hosting & Infrastructure',
-    category: 'Engineering',
-    summary: 'Scalable, secure cloud infrastructure with proactive monitoring, managed backups and 99.9% uptime SLAs.',
-    detail: [
-      'Cloud architecture on AWS, GCP or Azure',
-      'Infrastructure as Code (Terraform, Pulumi)',
-      'Kubernetes orchestration for complex workloads',
-      'Managed CI/CD with GitHub Actions or GitLab',
-      'Security hardening, WAF and DDoS protection',
-      '24/7 monitoring and incident response',
-    ],
-    img: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&h=560&fit=crop&auto=format',
-    tech: ['AWS', 'GCP', 'Kubernetes', 'Terraform', 'Cloudflare'],
-  },
-]
-
-const categories = ['All', 'Engineering', 'Design', 'Strategy', 'Growth']
+type Service = {
+  id: string
+  title: string
+  category: string
+  summary: string
+  detail: string[]
+  img: string
+  tech: string[]
+}
 
 export default function Services({ onNavigate }: Props) {
+  const [services, setServices] = useState<Service[]>([])
+  const [categories, setCategories] = useState<string[]>(['All'])
   const [activeCategory, setActiveCategory] = useState('All')
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const filtered = activeCategory === 'All'
-    ? services
-    : services.filter(s => s.category === activeCategory)
+  useEffect(() => {
+    Promise.all([servicesApi.list(), servicesApi.categories()])
+      .then(([svcRes, catRes]: [any, any]) => {
+        const svcs: Service[] = (svcRes.results ?? svcRes).map((s: any, i: number) => ({
+          id: String(i + 1).padStart(2, '0'),
+          title: s.title ?? s.name,
+          category: s.category?.name ?? s.category ?? 'Engineering',
+          summary: s.short_description ?? s.description ?? '',
+          detail: Array.isArray(s.deliverables) ? s.deliverables : (s.description ?? '').split('\n').filter(Boolean).slice(0, 6),
+          img: s.image ?? 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&h=560&fit=crop&auto=format',
+          tech: Array.isArray(s.technologies) ? s.technologies : [],
+        }))
+        setServices(svcs)
+        const catNames: string[] = ['All', ...(catRes.results ?? catRes).map((c: any) => c.name ?? c)]
+        setCategories(catNames)
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [])
+
+  const filtered = activeCategory === 'All' ? services : services.filter(s => s.category === activeCategory)
+
+  if (loading) {
+    return (
+      <div className="page-enter pt-24">
+        <section className="section-pad pb-12">
+          <div className="max-w-7xl mx-auto px-6 lg:px-8">
+            <div className="animate-pulse space-y-6">
+              <div className="h-8 bg-current opacity-10 rounded w-40" />
+              <div className="h-12 bg-current opacity-5 rounded w-80" />
+              <div className="grid md:grid-cols-2 gap-4">
+                {[1,2,3,4].map(i => <div key={i} className="h-40 bg-current opacity-5 rounded-xl" />)}
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    )
+  }
 
   return (
     <div className="page-enter pt-24">

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Navigation from './components/Navigation'
 import Footer from './components/Footer'
 import Home from './pages/Home'
@@ -13,6 +14,8 @@ import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 import ForgotPassword from './pages/auth/ForgotPassword'
 import Dashboard from './pages/dashboard/Dashboard'
+import NotFound from './pages/NotFound'
+
 
 type Page =
   | 'home' | 'services' | 'about' | 'portfolio' | 'contact' | 'blog'
@@ -22,7 +25,8 @@ type Page =
 
 const NO_CHROME_PAGES = ['login', 'register', 'forgot-password', 'dashboard']
 
-export default function App() {
+function AppInner() {
+  const { user, loading } = useAuth()
   const [page, setPage] = useState<Page>('home')
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
 
@@ -31,6 +35,12 @@ export default function App() {
   }, [theme])
 
   const navigate = (p: string) => {
+    // Guard: redirect unauthenticated users away from dashboard
+    if (p === 'dashboard' && !user && !loading) {
+      setPage('login')
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
     setPage(p as Page)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -41,6 +51,18 @@ export default function App() {
   const showChrome = !NO_CHROME_PAGES.some(p => page === p)
 
   const blogPostSlug = page.startsWith('blog-post-') ? page.replace('blog-post-', '') : null
+
+  // Show loading spinner while session is being checked
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--background)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <svg className="animate-spin" width="32" height="32" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="var(--primary)" strokeWidth="2" opacity="0.25"/>
+          <path d="M12 2a10 10 0 0 1 10 10" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+      </div>
+    )
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--background)', color: 'var(--foreground)' }}>
@@ -71,11 +93,23 @@ export default function App() {
           {page === 'login' && <Login onNavigate={navigate} />}
           {page === 'register' && <Register onNavigate={navigate} />}
           {page === 'forgot-password' && <ForgotPassword onNavigate={navigate} />}
-          {page === 'dashboard' && <Dashboard onNavigate={navigate} />}
+          {page === 'dashboard' && (user ? <Dashboard onNavigate={navigate} /> : <Login onNavigate={navigate} />)}
+          {!['home', 'services', 'about', 'portfolio', 'contact', 'blog', 'login', 'register', 'forgot-password', 'dashboard'].includes(page) && !blogPostSlug && (
+            <NotFound onNavigate={navigate} />
+          )}
         </motion.div>
       </AnimatePresence>
 
+
       {showChrome && <Footer onNavigate={navigate} />}
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
+    </AuthProvider>
   )
 }

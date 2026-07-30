@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { auth } from '../../lib/api'
+import type { ApiError } from '../../lib/api'
 
 interface Props { onNavigate: (page: string) => void }
 
@@ -7,13 +9,21 @@ export default function ForgotPassword({ onNavigate }: Props) {
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError('')
     setLoading(true)
-    await new Promise(r => setTimeout(r, 1500))
-    setLoading(false)
-    setSent(true)
+    try {
+      await auth.forgotPassword(email)
+      setSent(true)
+    } catch (err) {
+      const apiErr = err as ApiError
+      setError(apiErr.message || 'Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -57,6 +67,9 @@ export default function ForgotPassword({ onNavigate }: Props) {
                 <button type="submit" className="btn btn-primary w-full" style={{ padding: '0.875rem' }} disabled={loading}>
                   {loading ? 'Sending…' : 'Send reset link'}
                 </button>
+                {error && (
+                  <p className="text-sm text-center" style={{ color: '#F87171' }}>{error}</p>
+                )}
               </form>
 
               <p className="text-sm text-center mt-6" style={{ color: 'var(--muted-foreground)' }}>

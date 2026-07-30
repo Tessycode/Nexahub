@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
-import { motion, useInView } from 'framer-motion'
+import { motion, useInView, AnimatePresence } from 'framer-motion'
+import { services as servicesApi, core, blog as blogApi } from '../lib/api'
+
 
 interface HomeProps {
   onNavigate: (page: string) => void
@@ -50,34 +52,77 @@ const clientLogos = [
   { name: 'HubSpot', domain: 'hubspot.com' },
 ]
 
-const services = [
-  { id: '01', title: 'Website Development', description: 'Performant, accessible websites built with modern frameworks. From marketing sites to complex web applications — architected to grow.', img: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=600&h=420&fit=crop&auto=format', tags: ['React', 'Next.js', 'TypeScript'] },
-  { id: '02', title: 'Mobile Applications', description: 'Native and cross-platform mobile apps that users actually want to use. Built around real user behaviour, not feature lists.', img: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=600&h=420&fit=crop&auto=format', tags: ['iOS', 'Android', 'React Native'] },
-  { id: '03', title: 'UI/UX Design', description: 'Research-led product design that converts. We validate assumptions early and iterate quickly — reducing expensive late-stage changes.', img: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=600&h=420&fit=crop&auto=format', tags: ['Figma', 'Prototyping', 'Research'] },
-  { id: '04', title: 'Business Branding', description: 'Brand identities built to last. Visual systems, positioning frameworks, and verbal guidelines that give your company a clear voice.', img: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=600&h=420&fit=crop&auto=format', tags: ['Identity', 'Guidelines', 'Strategy'] },
-  { id: '05', title: 'Digital Marketing', description: 'Campaigns that generate real pipeline — not just impressions. Paid search, social, content, and email working together.', img: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=420&fit=crop&auto=format', tags: ['Paid Ads', 'Content', 'Analytics'] },
-  { id: '06', title: 'Cloud Infrastructure', description: 'Scalable, secure cloud architecture with proactive monitoring, managed backups and 99.9% uptime SLAs.', img: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&h=420&fit=crop&auto=format', tags: ['AWS', 'GCP', 'DevOps'] },
-]
-
-const testimonials = [
-  { quote: "Nexahub did something most agencies won't — they pushed back on our initial brief and proposed a better solution. Six months post-launch our conversion rate is up 34%.", name: 'Sarah Chen', title: 'Chief Product Officer', company: 'Fieldstone Capital', img: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&h=80&fit=crop&auto=format' },
-  { quote: "The team understood our domain — fintech compliance — without us having to over-explain. They shipped on time, the code is clean, and the app got featured on Product Hunt.", name: 'Marcus Osei', title: 'Co-Founder & CTO', company: 'Paragon Pay', img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&auto=format' },
-  { quote: "We came to Nexahub with a vague idea and a tight deadline. They helped us think through the product, designed the whole experience and delivered a working MVP in eight weeks.", name: 'Priya Nair', title: 'Founder', company: 'Meridian Health', img: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&h=80&fit=crop&auto=format' },
-]
-
-const blogPosts = [
-  { slug: 'b2b-saas-onboarding', category: 'Product Design', title: 'Why most B2B SaaS onboarding fails — and how to fix it', excerpt: 'The first 15 minutes determine whether a user stays or churns. Most products spend months on acquisition and days on activation.', date: 'Jan 14, 2025', readTime: '7 min', img: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&h=380&fit=crop&auto=format' },
-  { slug: 'page-load-performance', category: 'Engineering', title: "Building for performance: how we cut 3s from a client's page load", excerpt: 'A real-world deep-dive into bundle analysis, server-side rendering decisions, and the trade-offs that actually move the needle.', date: 'Dec 28, 2024', readTime: '11 min', img: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=600&h=380&fit=crop&auto=format' },
-  { slug: 'rebranding-strategy', category: 'Brand Strategy', title: 'Rebranding without losing your existing customers', excerpt: 'Brand evolution is more art than science. Here\'s how we approach identity refreshes without triggering brand recognition loss.', date: 'Dec 10, 2024', readTime: '8 min', img: 'https://images.unsplash.com/photo-1542744094-3a31f272c490?w=600&h=380&fit=crop&auto=format' },
-]
+type HomeService = { id: string; title: string; description: string; img: string; tags: string[] }
+type HomeTestimonial = { quote: string; name: string; title: string; company: string; img: string }
+type HomeBlogPost = { slug: string; category: string; title: string; excerpt: string; date: string; readTime: string; img: string }
+type HomeStat = { n: number; suf: string; label: string }
 
 export default function Home({ onNavigate, theme }: HomeProps) {
   const [activeTestimonial, setActiveTestimonial] = useState(0)
+  const [homeServices, setHomeServices] = useState<HomeService[]>([])
+  const [testimonials, setTestimonials] = useState<HomeTestimonial[]>([])
+  const [blogPosts, setBlogPosts] = useState<HomeBlogPost[]>([])
+  const [stats, setStats] = useState<HomeStat[]>([
+    { n: 120, suf: '+', label: 'Projects delivered' },
+    { n: 8, suf: ' yrs', label: 'In operation' },
+    { n: 96, suf: '%', label: 'Client retention' },
+  ])
 
   useEffect(() => {
+    // Fetch all home page data in parallel
+    Promise.all([
+      servicesApi.list(),
+      core.testimonials(),
+      blogApi.posts({ page: 1 }),
+      core.statistics(),
+    ]).then(([svcRes, testimonialRes, postsRes, statsRes]: [any, any, any, any]) => {
+      const svcs: HomeService[] = (svcRes.results ?? svcRes).slice(0, 6).map((s: any, i: number) => ({
+        id: String(i + 1).padStart(2, '0'),
+        title: s.title ?? s.name,
+        description: s.short_description ?? s.description ?? '',
+        img: s.image ?? 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=600&h=420&fit=crop&auto=format',
+        tags: Array.isArray(s.technologies) ? s.technologies.slice(0, 3) : [],
+      }))
+      setHomeServices(svcs)
+
+      const tesimonialsList: HomeTestimonial[] = (testimonialRes.results ?? testimonialRes).map((t: any) => ({
+        quote: t.quote ?? t.text ?? '',
+        name: t.author_name ?? t.name ?? '',
+        title: t.author_title ?? t.title ?? '',
+        company: t.author_company ?? t.company ?? '',
+        img: t.author_avatar ?? t.avatar ?? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&h=80&fit=crop&auto=format',
+      }))
+      if (tesimonialsList.length) setTestimonials(tesimonialsList)
+
+      const posts: HomeBlogPost[] = (postsRes.results ?? postsRes).slice(0, 3).map((p: any) => ({
+        slug: p.slug,
+        category: p.category?.name ?? p.category ?? 'General',
+        title: p.title,
+        excerpt: p.excerpt ?? '',
+        date: p.published_at ? new Date(p.published_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '',
+        readTime: p.read_time ? (String(p.read_time).includes('min') ? p.read_time : `${p.read_time} min`) : '5 min',
+        img: p.hero_image_display || p.featured_image || 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&h=380&fit=crop&auto=format',
+      }))
+      if (posts.length) setBlogPosts(posts)
+
+      const rawStats: any[] = statsRes.results ?? statsRes
+      if (rawStats.length) {
+        setStats(rawStats.slice(0, 3).map((s: any) => ({
+          n: Number(s.value) || 0,
+          suf: s.suffix ?? '',
+          label: s.label ?? s.title ?? '',
+        })))
+      }
+    }).catch(console.error)
+  }, [])
+
+  const services = homeServices
+
+  useEffect(() => {
+    if (!testimonials.length) return
     const timer = setInterval(() => setActiveTestimonial(t => (t + 1) % testimonials.length), 5500)
     return () => clearInterval(timer)
-  }, [])
+  }, [testimonials.length])
 
   const logoSet = [...clientLogos, ...clientLogos] // doubled for seamless loop
 
@@ -114,7 +159,7 @@ export default function Home({ onNavigate, theme }: HomeProps) {
             </motion.div>
 
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.6 }} className="mt-14 flex items-center gap-8">
-              {[{ n: 120, suf: '+', label: 'Projects delivered' }, { n: 8, suf: ' yrs', label: 'In operation' }, { n: 96, suf: '%', label: 'Client retention' }].map(stat => (
+              {stats.map(stat => (
                 <div key={stat.label}>
                   <p className="text-2xl font-bold" style={{ fontFamily: 'DM Serif Display, serif' }}>
                     <AnimatedCounter target={stat.n} suffix={stat.suf} />
@@ -296,27 +341,46 @@ export default function Home({ onNavigate, theme }: HomeProps) {
       <section className="section-pad border-t" style={{ borderColor: 'var(--border)', background: 'var(--card)' }}>
         <div className="max-w-4xl mx-auto px-6 lg:px-8 text-center">
           <FadeUp><span className="tag mb-8 inline-block">Client perspective</span></FadeUp>
-          <div className="relative" style={{ minHeight: '220px' }}>
-            {testimonials.map((t, i) => (
-              <motion.div key={i} initial={false} animate={{ opacity: i === activeTestimonial ? 1 : 0, y: i === activeTestimonial ? 0 : 12 }} transition={{ duration: 0.55 }} className="absolute inset-0 flex flex-col items-center" style={{ pointerEvents: i === activeTestimonial ? 'auto' : 'none' }}>
-                <blockquote className="text-xl md:text-2xl leading-snug mb-8" style={{ fontStyle: 'italic', fontFamily: 'DM Serif Display, serif' }}>"{t.quote}"</blockquote>
-                <div className="flex items-center gap-4">
-                  <img src={t.img} alt={t.name} className="w-11 h-11 rounded-full object-cover" />
-                  <div className="text-left">
-                    <p className="text-sm font-semibold">{t.name}</p>
-                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{t.title}, {t.company}</p>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-          <div className="flex justify-center gap-2 mt-12">
-            {testimonials.map((_, i) => (
-              <button key={i} onClick={() => setActiveTestimonial(i)} className="h-1 rounded-full transition-all duration-300" style={{ width: i === activeTestimonial ? '28px' : '8px', background: i === activeTestimonial ? 'var(--primary)' : 'var(--border)' }} />
-            ))}
-          </div>
+          {testimonials.length > 0 && (
+            <>
+              <div className="relative min-h-[220px] flex items-center justify-center">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activeTestimonial}
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -16 }}
+                    transition={{ duration: 0.4 }}
+                    className="flex flex-col items-center max-w-3xl"
+                  >
+                    <blockquote className="text-xl md:text-2xl leading-snug mb-8" style={{ fontStyle: 'italic', fontFamily: 'DM Serif Display, serif' }}>
+                      "{testimonials[activeTestimonial].quote}"
+                    </blockquote>
+                    <div className="flex items-center gap-4">
+                      <img src={testimonials[activeTestimonial].img} alt={testimonials[activeTestimonial].name} className="w-11 h-11 rounded-full object-cover" />
+                      <div className="text-left">
+                        <p className="text-sm font-semibold">{testimonials[activeTestimonial].name}</p>
+                        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{testimonials[activeTestimonial].title}, {testimonials[activeTestimonial].company}</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+              <div className="flex justify-center gap-2 mt-8">
+                {testimonials.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveTestimonial(i)}
+                    className="h-1 rounded-full transition-all duration-300"
+                    style={{ width: i === activeTestimonial ? '28px' : '8px', background: i === activeTestimonial ? 'var(--primary)' : 'var(--border)' }}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </section>
+
 
       {/* BLOG PREVIEW */}
       <section className="section-pad">

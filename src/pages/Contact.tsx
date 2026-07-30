@@ -1,5 +1,7 @@
 import { useState, useRef } from 'react'
 import { motion, useInView, AnimatePresence } from 'framer-motion'
+import { contact as contactApi } from '../lib/api'
+import type { ApiError } from '../lib/api'
 
 interface Props { onNavigate: (page: string) => void }
 
@@ -28,11 +30,29 @@ export default function Contact({ onNavigate: _ }: Props) {
     service: '', budget: '', message: '',
   })
 
+  const [error, setError] = useState('')
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError('')
     setFormState('submitting')
-    await new Promise(r => setTimeout(r, 1800))
-    setFormState('success')
+    try {
+      await contactApi.enquiry({
+        first_name: form.firstName,
+        last_name: form.lastName,
+        company: form.company,
+        email: form.email,
+        phone: form.phone,
+        service_interest: form.service,
+        budget_range: form.budget,
+        message: form.message,
+      })
+      setFormState('success')
+    } catch (err) {
+      const apiErr = err as ApiError
+      setError(apiErr.message || 'Failed to send. Please try again.')
+      setFormState('idle')
+    }
   }
 
   return (
@@ -181,6 +201,10 @@ export default function Contact({ onNavigate: _ }: Props) {
                           </span>
                         ) : 'Send enquiry'}
                       </button>
+
+                      {error && (
+                        <p className="text-sm text-center" style={{ color: '#F87171' }}>{error}</p>
+                      )}
 
                       <p className="text-xs text-center" style={{ color: 'var(--muted-foreground)' }}>
                         We respect your privacy. Your data is never shared or sold.

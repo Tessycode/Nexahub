@@ -1,5 +1,6 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion, useInView } from 'framer-motion'
+import { blog as blogApi } from '../lib/api'
 
 interface Props { onNavigate: (page: string) => void }
 
@@ -13,85 +14,78 @@ function FadeUp({ children, delay = 0, className = '' }: { children: React.React
   )
 }
 
-const articles = [
-  {
-    slug: 'b2b-saas-onboarding',
-    category: 'Product Design',
-    title: "Why most B2B SaaS onboarding fails — and how to fix it",
-    excerpt: "The first 15 minutes determine whether a user stays or churns. Most products spend months on acquisition and days on activation. Here's what the data tells us.",
-    date: 'Jan 14, 2025',
-    readTime: '7 min read',
-    author: { name: 'Lin Zhao', img: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&h=80&fit=crop&auto=format' },
-    img: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=500&fit=crop&auto=format',
-    featured: true,
-  },
-  {
-    slug: 'page-load-performance',
-    category: 'Engineering',
-    title: "Building for performance: how we cut 3s from a client's page load",
-    excerpt: "A real-world deep-dive into bundle analysis, server-side rendering decisions, and the trade-offs that actually move the needle on Core Web Vitals.",
-    date: 'Dec 28, 2024',
-    readTime: '11 min read',
-    author: { name: 'Marcus Webb', img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&auto=format' },
-    img: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&h=500&fit=crop&auto=format',
-    featured: false,
-  },
-  {
-    slug: 'rebranding-strategy',
-    category: 'Brand Strategy',
-    title: "Rebranding without losing your existing customers",
-    excerpt: "Brand evolution is more art than science. Here's how we approach identity refreshes without triggering brand recognition loss.",
-    date: 'Dec 10, 2024',
-    readTime: '8 min read',
-    author: { name: 'James Hartfield', img: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&auto=format' },
-    img: 'https://images.unsplash.com/photo-1542744094-3a31f272c490?w=800&h=500&fit=crop&auto=format',
-    featured: false,
-  },
-  {
-    slug: 'paid-ads-conversion',
-    category: 'Growth',
-    title: "The hidden reason your paid ads aren't converting",
-    excerpt: "Spending on traffic but not on what happens after the click is like pouring water into a leaking bucket. Post-click experience matters more than most marketers admit.",
-    date: 'Nov 25, 2024',
-    readTime: '6 min read',
-    author: { name: 'Sofia Patel', img: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&h=80&fit=crop&auto=format' },
-    img: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=500&fit=crop&auto=format',
-    featured: false,
-  },
-  {
-    slug: 'react-native-vs-native',
-    category: 'Engineering',
-    title: "When to choose React Native vs. native development",
-    excerpt: "The correct answer depends on your team, your users, your timeline, and your long-term maintenance appetite. Here's the decision framework we use with every client.",
-    date: 'Nov 8, 2024',
-    readTime: '9 min read',
-    author: { name: 'Yemi Adeyinka', img: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=80&h=80&fit=crop&auto=format' },
-    img: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=800&h=500&fit=crop&auto=format',
-    featured: false,
-  },
-  {
-    slug: 'cloud-cost-optimisation',
-    category: 'Cloud Infrastructure',
-    title: "The £40k mistake: running EC2 when you should be running serverless",
-    excerpt: "Infrastructure decisions made at MVP stage have a way of compounding. One of our most common consulting engagements is reversing architectures that made sense at 100 users but not at 100,000.",
-    date: 'Oct 22, 2024',
-    readTime: '10 min read',
-    author: { name: 'Ravi Krishnan', img: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=80&h=80&fit=crop&auto=format' },
-    img: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&h=500&fit=crop&auto=format',
-    featured: false,
-  },
-]
-
-const categories = ['All', 'Product Design', 'Engineering', 'Brand Strategy', 'Growth', 'Cloud Infrastructure']
+type Article = {
+  slug: string
+  category: string
+  title: string
+  excerpt: string
+  date: string
+  readTime: string
+  author: { name: string; img: string }
+  img: string
+  featured: boolean
+}
 
 export default function Blog({ onNavigate }: Props) {
-  const [filter, setFilter] = useState('All')
+  const [articles, setArticles] = useState<Article[]>([])
+  const [categories, setCategories] = useState<string[]>([])
+  const [activeCategory, setActiveCategory] = useState('All')
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
 
-  const featured = articles[0]
-  const rest = articles.slice(1)
-  const filteredRest = filter === 'All' ? rest : rest.filter(a => a.category === filter)
+  useEffect(() => {
+    Promise.all([blogApi.posts(), blogApi.categories()])
+      .then(([postsRes, catsRes]: [any, any]) => {
+        const posts: Article[] = (postsRes.results ?? postsRes).map((p: any) => ({
+          slug: p.slug,
+          category: p.category?.name ?? p.category ?? 'General',
+          title: p.title,
+          excerpt: p.excerpt ?? p.content?.substring(0, 160) ?? '',
+          date: p.published_at ? new Date(p.published_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '',
+          readTime: p.read_time ? (String(p.read_time).includes('min') ? p.read_time : `${p.read_time} min read`) : '5 min read',
+          author: {
+            name: typeof p.author === 'object' && p.author !== null ? (p.author.name || 'Nexahub Team') : (p.author_name ?? p.author ?? 'Nexahub Team'),
+            img: typeof p.author === 'object' && p.author !== null ? (p.author.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&auto=format') : (p.author_avatar ?? 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&auto=format'),
+          },
+          img: p.hero_image_display || p.featured_image || 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=500&fit=crop&auto=format',
+          featured: p.is_featured ?? false,
+        }))
+        setArticles(posts)
+        const catNames: string[] = (catsRes.results ?? catsRes).map((c: any) => c.name)
+        setCategories(['All', ...catNames])
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [])
 
-  const filteredFeatured = filter === 'All' || filter === featured.category ? featured : null
+  const filtered = articles.filter(a => {
+    const matchCat = activeCategory === 'All' || a.category === activeCategory
+    const matchSearch = !search || a.title.toLowerCase().includes(search.toLowerCase()) || a.excerpt.toLowerCase().includes(search.toLowerCase())
+    return matchCat && matchSearch
+  })
+
+  const featured = filtered.find(a => a.featured) ?? filtered[0]
+  const rest = filtered.filter(a => a !== featured)
+  if (loading) {
+    return (
+      <div className="page-enter pt-24">
+        <section className="section-pad pb-12">
+          <div className="max-w-7xl mx-auto px-6 lg:px-8">
+            <div className="animate-pulse space-y-8">
+              <div className="h-8 bg-current opacity-10 rounded w-48" />
+              <div className="h-64 bg-current opacity-5 rounded-2xl" />
+              <div className="grid md:grid-cols-3 gap-6">
+                {[1,2,3].map(i => <div key={i} className="h-48 bg-current opacity-5 rounded-xl" />)}
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    )
+  }
+
+  const filteredFeatured = activeCategory === 'All' || activeCategory === featured?.category ? featured : null
+  const filteredRest = activeCategory === 'All' ? rest : rest.filter(a => a.category === activeCategory)
 
   return (
     <div className="page-enter pt-24">
@@ -109,6 +103,14 @@ export default function Blog({ onNavigate }: Props) {
               </p>
             </FadeUp>
           </div>
+          <FadeUp delay={0.2} className="mt-8">
+            <div className="relative max-w-xs">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--muted-foreground)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35" strokeLinecap="round"/></svg>
+              <input type="search" placeholder="Search articles…" value={search} onChange={e => setSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 rounded-xl text-sm border outline-none transition-colors"
+                style={{ background: 'var(--card)', borderColor: 'var(--border)', color: 'var(--foreground)' }} />
+            </div>
+          </FadeUp>
         </div>
       </section>
 
@@ -155,8 +157,8 @@ export default function Blog({ onNavigate }: Props) {
       <div className="border-y" style={{ borderColor: 'var(--border)' }}>
         <div className="max-w-7xl mx-auto px-6 lg:px-8 flex items-center gap-2 py-3 overflow-x-auto">
           {categories.map(cat => (
-            <button key={cat} onClick={() => setFilter(cat)} className="flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200"
-              style={{ background: filter === cat ? 'var(--primary)' : 'transparent', color: filter === cat ? 'var(--primary-foreground)' : 'var(--muted-foreground)', border: filter === cat ? 'none' : '1px solid var(--border)' }}>
+            <button key={cat} onClick={() => setActiveCategory(cat)} className="flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200"
+              style={{ background: activeCategory === cat ? 'var(--primary)' : 'transparent', color: activeCategory === cat ? 'var(--primary-foreground)' : 'var(--muted-foreground)', border: activeCategory === cat ? 'none' : '1px solid var(--border)' }}>
               {cat}
             </button>
           ))}

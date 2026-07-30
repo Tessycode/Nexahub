@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useAuth } from '../../contexts/AuthContext'
+import type { ApiError } from '../../lib/api'
 
 interface Props { onNavigate: (page: string) => void }
 
 export default function Login({ onNavigate }: Props) {
+  const { login } = useAuth()
   const [form, setForm] = useState({ email: '', password: '', remember: false })
   const [showPw, setShowPw] = useState(false)
   const [error, setError] = useState('')
@@ -15,9 +18,15 @@ export default function Login({ onNavigate }: Props) {
     if (!form.email.includes('@')) { setError('Please enter a valid email address.'); return }
     if (form.password.length < 6) { setError('Password must be at least 6 characters.'); return }
     setLoading(true)
-    await new Promise(r => setTimeout(r, 1400))
-    setLoading(false)
-    onNavigate('dashboard')
+    try {
+      await login(form.email, form.password, form.remember)
+      onNavigate('dashboard')
+    } catch (err) {
+      const apiErr = err as ApiError
+      setError(apiErr.message || 'Login failed. Please check your credentials.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

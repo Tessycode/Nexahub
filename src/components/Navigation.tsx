@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useAuth } from '../contexts/AuthContext'
 
 interface NavProps {
   currentPage: string
@@ -18,6 +19,7 @@ const services = [
 ]
 
 export default function Navigation({ currentPage, onNavigate, theme, onToggleTheme }: NavProps) {
+  const { user } = useAuth()
   const [scrolled, setScrolled] = useState(false)
   const [servicesOpen, setServicesOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -149,8 +151,22 @@ export default function Navigation({ currentPage, onNavigate, theme, onToggleThe
               </AnimatePresence>
             </button>
 
-            <button onClick={() => onNavigate('login')} className="btn btn-ghost text-sm" style={{ padding: '0.5rem 1rem' }}>Sign In</button>
-            <button onClick={() => onNavigate('register')} className="btn btn-primary text-sm" style={{ padding: '0.5625rem 1.25rem' }}>Get Started</button>
+            {user ? (
+              <button onClick={() => onNavigate('dashboard')} className="flex items-center gap-2.5 px-3 py-1.5 rounded-full border transition-all" style={{ borderColor: 'var(--border)', background: 'var(--card)' }}>
+                <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
+                  {user.avatar_url
+                    ? <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
+                    : <div className="w-full h-full flex items-center justify-center text-[10px] font-bold" style={{ background: 'var(--primary)', color: 'var(--primary-foreground)' }}>{user.first_name?.[0] ?? 'U'}</div>
+                  }
+                </div>
+                <span className="text-sm font-medium">{user.first_name}</span>
+              </button>
+            ) : (
+              <>
+                <button onClick={() => onNavigate('login')} className="btn btn-ghost text-sm" style={{ padding: '0.5rem 1rem' }}>Sign In</button>
+                <button onClick={() => onNavigate('register')} className="btn btn-primary text-sm" style={{ padding: '0.5625rem 1.25rem' }}>Get Started</button>
+              </>
+            )}
           </div>
 
           {/* Mobile: theme + hamburger */}

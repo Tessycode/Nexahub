@@ -1,47 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
+import { dashboard as dashboardApi, orders } from '../../lib/api'
+import { useAuth } from '../../contexts/AuthContext'
 
 interface Props { onNavigate: (page: string) => void }
 
-const trafficData = [
-  { month: 'Aug', visits: 4200, leads: 38 },
-  { month: 'Sep', visits: 5100, leads: 52 },
-  { month: 'Oct', visits: 4800, leads: 44 },
-  { month: 'Nov', visits: 6400, leads: 71 },
-  { month: 'Dec', visits: 5900, leads: 65 },
-  { month: 'Jan', visits: 7200, leads: 88 },
-]
-
-const conversionData = [
-  { week: 'W1', rate: 1.8 },
-  { week: 'W2', rate: 2.1 },
-  { week: 'W3', rate: 1.9 },
-  { week: 'W4', rate: 2.6 },
-]
-
-const projects = [
-  { id: 'PRJ-001', name: 'Website Redesign', status: 'In Progress', progress: 72, due: 'Feb 14, 2025', lead: 'Lin Zhao' },
-  { id: 'PRJ-002', name: 'iOS App v2.0', status: 'Review', progress: 91, due: 'Feb 28, 2025', lead: 'Marcus Webb' },
-  { id: 'PRJ-003', name: 'Brand Guidelines', status: 'In Progress', progress: 48, due: 'Mar 10, 2025', lead: 'Lin Zhao' },
-  { id: 'PRJ-004', name: 'SEO Campaign Q1', status: 'Active', progress: 35, due: 'Mar 31, 2025', lead: 'Sofia Patel' },
-]
-
-const invoices = [
-  { id: 'INV-2025-004', desc: 'Website Development — Sprint 3', amount: '£4,200', due: 'Jan 30, 2025', status: 'Pending' },
-  { id: 'INV-2025-003', desc: 'UI/UX Design — Phase 2', amount: '£3,600', due: 'Jan 15, 2025', status: 'Paid' },
-  { id: 'INV-2025-002', desc: 'iOS App Development — Sprint 2', amount: '£6,800', due: 'Jan 5, 2025', status: 'Paid' },
-  { id: 'INV-2024-018', desc: 'Brand Strategy & Guidelines', amount: '£5,100', due: 'Dec 20, 2024', status: 'Paid' },
-]
-
-const messages = [
-  { from: 'Lin Zhao', role: 'Head of Design', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&h=80&fit=crop&auto=format', preview: 'Hi James — I\'ve uploaded the updated homepage wireframes to the shared drive. Can you take a look before our call tomorrow?', time: '2h ago', unread: true },
-  { from: 'Marcus Webb', role: 'Head of Engineering', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&auto=format', preview: 'The staging environment is back up. All the API integration tests are passing now — ready for your sign-off.', time: '5h ago', unread: true },
-  { from: 'Sofia Patel', role: 'Director of Growth', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&h=80&fit=crop&auto=format', preview: 'Monthly analytics report attached. Traffic is up 22% MoM — keyword rankings are improving on all target terms.', time: 'Yesterday', unread: false },
-]
 
 type View = 'overview' | 'projects' | 'messages' | 'invoices' | 'profile'
 
@@ -54,8 +21,78 @@ const sideNav = [
 ]
 
 export default function Dashboard({ onNavigate }: Props) {
+  const { user } = useAuth()
   const [view, setView] = useState<View>('overview')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // Live data state
+  const [trafficData, setTrafficData] = useState<any[]>([])
+  const [conversionData, setConversionData] = useState<any[]>([])
+  const [projects, setProjects] = useState<any[]>([])
+  const [invoices, setInvoices] = useState<any[]>([])
+  const [messages, setMessages] = useState<any[]>([])
+  const [overview, setOverview] = useState<any>(null)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    Promise.all([
+      dashboardApi.trafficData(),
+      dashboardApi.conversionData(),
+      orders.projects(),
+      orders.invoices(),
+      dashboardApi.messages(),
+      dashboardApi.overview(),
+    ]).then(([traffic, conversion, projs, invs, msgs, ovw]: [any, any, any, any, any, any]) => {
+      setTrafficData(Array.isArray(traffic) ? traffic : traffic.results ?? [])
+      setConversionData(Array.isArray(conversion) ? conversion : conversion.results ?? [])
+      const projList = Array.isArray(projs) ? projs : projs.results ?? []
+      setProjects(projList.map((p: any) => ({
+        id: p.reference_number ?? p.id,
+        name: p.project_name ?? p.name,
+        status: p.status_display ?? p.status ?? 'Active',
+        progress: p.progress_percentage ?? 0,
+        due: p.deadline ? new Date(p.deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'TBD',
+        lead: p.assigned_to ?? 'Nexahub Team',
+      })))
+      const invList = Array.isArray(invs) ? invs : invs.results ?? []
+      setInvoices(invList.map((inv: any) => ({
+        id: inv.invoice_number ?? inv.id,
+        desc: inv.description ?? inv.title ?? '',
+        amount: inv.amount ? `£${Number(inv.amount).toLocaleString()}` : '£0',
+        due: inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '',
+        status: inv.status_display ?? inv.status ?? 'Pending',
+      })))
+      const msgList = Array.isArray(msgs) ? msgs : msgs.results ?? []
+      const unread = msgList.filter((m: any) => !m.is_read && !m.read_at).length
+      setUnreadCount(unread)
+      setMessages(msgList.map((m: any) => ({
+        from: m.sender_name ?? m.sender ?? 'Nexahub',
+        role: m.sender_role ?? '',
+        avatar: m.sender_avatar ?? 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&auto=format',
+        preview: m.body ?? m.preview ?? '',
+        time: m.created_at ? new Date(m.created_at).toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' }) : '',
+        unread: !m.is_read,
+      })))
+      setOverview(ovw)
+    }).catch(console.error).finally(() => setLoading(false))
+  }, [])
+
+  // Dynamic badge for messages nav item
+  const sideNavResolved = sideNav.map(item =>
+    item.id === 'messages' ? { ...item, badge: unreadCount } : item
+  )
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--background)' }}>
+        <div className="text-center">
+          <div className="w-10 h-10 border-2 rounded-full animate-spin mx-auto mb-4" style={{ borderColor: 'var(--primary)', borderTopColor: 'transparent' }} />
+          <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>Loading your dashboard…</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex" style={{ background: 'var(--background)' }}>
@@ -76,11 +113,14 @@ export default function Dashboard({ onNavigate }: Props) {
         <div className="px-4 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0">
-              <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&auto=format" alt="James" className="w-full h-full object-cover" />
+              {user?.avatar_url
+                ? <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
+                : <div className="w-full h-full flex items-center justify-center text-sm font-bold" style={{ background: 'var(--primary)', color: 'var(--primary-foreground)' }}>{user?.first_name?.[0] ?? 'U'}</div>
+              }
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-medium truncate">James Hartfield</p>
-              <p className="text-xs truncate" style={{ color: 'var(--muted-foreground)' }}>Fieldstone Capital</p>
+              <p className="text-sm font-medium truncate">{user?.full_name ?? 'Loading…'}</p>
+              <p className="text-xs truncate" style={{ color: 'var(--muted-foreground)' }}>{user?.company ?? 'Client'}</p>
             </div>
           </div>
         </div>
@@ -89,7 +129,7 @@ export default function Dashboard({ onNavigate }: Props) {
         <nav className="flex-1 p-3 overflow-y-auto">
           <p className="text-xs uppercase tracking-widest px-3 mb-2" style={{ color: 'var(--muted-foreground)', fontFamily: 'JetBrains Mono, monospace' }}>Portal</p>
           <div className="flex flex-col gap-0.5">
-            {sideNav.map(item => (
+            {sideNavResolved.map(item => (
               <button
                 key={item.id}
                 onClick={() => { setView(item.id); setSidebarOpen(false) }}
@@ -151,8 +191,11 @@ export default function Dashboard({ onNavigate }: Props) {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
               <span className="absolute top-1 right-1 w-2 h-2 rounded-full" style={{ background: 'var(--primary)' }} />
             </button>
-            <div className="w-8 h-8 rounded-full overflow-hidden">
-              <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&auto=format" alt="" className="w-full h-full object-cover" />
+            <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
+              {user?.avatar_url
+                ? <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
+                : <div className="w-full h-full flex items-center justify-center text-xs font-bold" style={{ background: 'var(--primary)', color: 'var(--primary-foreground)' }}>{user?.first_name?.[0] ?? 'U'}</div>
+              }
             </div>
           </div>
         </header>
@@ -167,11 +210,11 @@ export default function Dashboard({ onNavigate }: Props) {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.25 }}
             >
-              {view === 'overview' && <Overview />}
-              {view === 'projects' && <Projects />}
-              {view === 'messages' && <Messages />}
-              {view === 'invoices' && <Invoices />}
-              {view === 'profile' && <Profile />}
+              {view === 'overview' && <Overview trafficData={trafficData} conversionData={conversionData} projects={projects} invoices={invoices} messages={messages} overview={overview} user={user} />}
+              {view === 'projects' && <Projects projects={projects} />}
+              {view === 'messages' && <Messages messages={messages} />}
+              {view === 'invoices' && <Invoices invoices={invoices} />}
+              {view === 'profile' && <Profile user={user} />}
             </motion.div>
           </AnimatePresence>
         </main>
@@ -180,11 +223,12 @@ export default function Dashboard({ onNavigate }: Props) {
   )
 }
 
-function Overview() {
+function Overview({ trafficData, conversionData, projects, invoices, messages, overview, user }: { trafficData: any[]; conversionData: any[]; projects: any[]; invoices: any[]; messages: any[]; overview: any; user: any }) {
+
   const stats = [
-    { label: 'Active projects', value: '4', change: '+1 this quarter', up: true },
-    { label: 'Open invoices', value: '£4,200', change: 'Due Jan 30', up: false, warn: true },
-    { label: 'Unread messages', value: '2', change: '2 require response', up: true },
+    { label: 'Active projects', value: String(overview?.active_projects_count ?? projects.length), change: 'Current quarter', up: true },
+    { label: 'Open invoices', value: overview?.unpaid_invoices_amount ? `£${Number(overview.unpaid_invoices_amount).toLocaleString()}` : (invoices[0]?.amount ?? '£0'), change: 'Outstanding balance', up: false, warn: true },
+    { label: 'Unread messages', value: String(overview?.unread_messages_count ?? messages.filter((m: any) => m.unread).length), change: 'Requires response', up: true },
     { label: 'Website traffic', value: '7,200', change: '+22% vs last month', up: true },
   ]
 
@@ -199,7 +243,7 @@ function Overview() {
   return (
     <div>
       <div className="mb-8">
-        <h2 className="text-xl font-semibold mb-1">Good morning, James</h2>
+        <h2 className="text-xl font-semibold mb-1">Good morning, {user?.first_name ?? 'Client'}</h2>
         <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>Here's what's happening across your projects.</p>
       </div>
 
@@ -325,7 +369,7 @@ function Overview() {
   )
 }
 
-function Projects() {
+function Projects({ projects }: { projects: any[] }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
@@ -379,7 +423,7 @@ function Projects() {
   )
 }
 
-function Messages() {
+function Messages({ messages }: { messages: any[] }) {
   const [activeMsg, setActiveMsg] = useState(0)
   return (
     <div>
@@ -406,25 +450,34 @@ function Messages() {
           ))}
         </div>
         <div className="md:col-span-2 flex flex-col p-6">
-          <div className="flex items-center gap-3 pb-5 border-b mb-5" style={{ borderColor: 'var(--border)' }}>
-            <img src={messages[activeMsg].avatar} alt="" className="w-10 h-10 rounded-full object-cover" />
-            <div>
-              <p className="font-semibold text-sm">{messages[activeMsg].from}</p>
-              <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{messages[activeMsg].role}</p>
+          {messages[activeMsg] ? (
+            <>
+              <div className="flex items-center gap-3 pb-5 border-b mb-5" style={{ borderColor: 'var(--border)' }}>
+                <img src={messages[activeMsg].avatar} alt="" className="w-10 h-10 rounded-full object-cover" />
+                <div>
+                  <p className="font-semibold text-sm">{messages[activeMsg].from}</p>
+                  <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{messages[activeMsg].role}</p>
+                </div>
+              </div>
+              <p className="text-sm leading-relaxed flex-1 mb-6" style={{ color: 'var(--muted-foreground)' }}>{messages[activeMsg].preview}</p>
+              <div className="flex gap-2">
+                <input className="input-base text-sm flex-1" placeholder="Type a reply…" />
+                <button className="btn btn-primary" style={{ padding: '0.75rem 1.25rem' }}>Send</button>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-sm" style={{ color: 'var(--muted-foreground)' }}>
+              No message selected or available.
             </div>
-          </div>
-          <p className="text-sm leading-relaxed flex-1 mb-6" style={{ color: 'var(--muted-foreground)' }}>{messages[activeMsg].preview}</p>
-          <div className="flex gap-2">
-            <input className="input-base text-sm flex-1" placeholder="Type a reply…" />
-            <button className="btn btn-primary" style={{ padding: '0.75rem 1.25rem' }}>Send</button>
-          </div>
+          )}
         </div>
       </div>
+
     </div>
   )
 }
 
-function Invoices() {
+function Invoices({ invoices }: { invoices: any[] }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
@@ -486,7 +539,7 @@ function Invoices() {
   )
 }
 
-function Profile() {
+function Profile({ user }: { user: any }) {
   return (
     <div className="max-w-2xl">
       <div className="mb-8">
@@ -499,14 +552,14 @@ function Profile() {
         <div className="px-6 pb-6">
           <div className="-mt-10 mb-4 flex items-end justify-between">
             <div className="relative">
-              <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&auto=format" alt="" className="w-20 h-20 rounded-full object-cover border-4" style={{ borderColor: 'var(--card)' }} />
-              <button className="absolute bottom-0 right-0 w-6 h-6 rounded-full flex items-center justify-center" style={{ background: 'var(--primary)' }}>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M15 3H21V9"/><path d="M10 14L21 3"/><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/></svg>
-              </button>
+              {user?.avatar_url
+                ? <img src={user.avatar_url} alt="" className="w-20 h-20 rounded-full object-cover border-4" style={{ borderColor: 'var(--card)' }} />
+                : <div className="w-20 h-20 rounded-full flex items-center justify-center text-xl font-bold border-4" style={{ borderColor: 'var(--card)', background: 'var(--primary)', color: 'var(--primary-foreground)' }}>{user?.first_name?.[0] ?? 'U'}</div>
+              }
             </div>
           </div>
-          <p className="font-semibold">James Hartfield</p>
-          <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>CPO · Fieldstone Capital</p>
+          <p className="font-semibold">{user?.full_name ?? 'User'}</p>
+          <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>{user?.role ?? 'Client'} · {user?.company ?? 'N/A'}</p>
         </div>
       </div>
 
@@ -514,10 +567,10 @@ function Profile() {
         <h3 className="text-sm font-semibold mb-5">Personal information</h3>
         <div className="grid grid-cols-2 gap-4">
           {[
-            { label: 'First name', value: 'James' },
-            { label: 'Last name', value: 'Hartfield' },
-            { label: 'Email', value: 'james@fieldstone.com' },
-            { label: 'Phone', value: '+44 7700 900 000' },
+            { label: 'First name', value: user?.first_name ?? '' },
+            { label: 'Last name', value: user?.last_name ?? '' },
+            { label: 'Email', value: user?.email ?? '' },
+            { label: 'Phone', value: user?.phone ?? '' },
           ].map(field => (
             <div key={field.label}>
               <label className="block text-xs mb-1.5" style={{ color: 'var(--muted-foreground)' }}>{field.label}</label>

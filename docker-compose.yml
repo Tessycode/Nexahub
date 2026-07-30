@@ -1,0 +1,58 @@
+version: '3.9'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: nexahub_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: nexahub_db
+      MYSQL_USER: nexahub_user
+      MYSQL_PASSWORD: nexahub_password
+      MYSQL_ROOT_PASSWORD: root_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "nexahub_user", "-pnexahub_password"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: ./nexahub_backend
+      dockerfile: Dockerfile
+    container_name: nexahub_web
+    restart: unless-stopped
+    command: >
+      sh -c "python manage.py migrate --settings=nexahub.settings.development &&
+             python manage.py seed_all --settings=nexahub.settings.development &&
+             gunicorn nexahub.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120"
+    volumes:
+      - ./nexahub_backend:/app
+      - media_files:/app/media
+      - static_files:/app/staticfiles
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./nexahub_backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DJANGO_SETTINGS_MODULE=nexahub.settings.development
+
+  # Uncomment to enable Redis caching
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: nexahub_redis
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+
+volumes:
+  mysql_data:
+  media_files:
+  static_files:

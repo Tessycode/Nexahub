@@ -1,0 +1,224 @@
+NovaHub – Digital Services Marketplace
+
+Objective
+
+Design and develop a modern, responsive website for a company that offers digital services such as website development, graphic design, branding, mobile app development, digital marketing, and business solutions.
+
+The website should look premium, fast, and trustworthy, similar to a startup or SaaS company.
+
+Pages Required
+
+1. Home Page
+
+Include:
+
+* Modern hero section with a large background image or animation
+* Catchy headline
+* Short company description
+* “Get Started” and “Contact Us” buttons
+* Services overview
+* Why choose us section
+* Statistics (Projects Completed, Happy Clients, Countries Served)
+* Customer testimonials
+* Latest blog/articles
+* Newsletter subscription
+* Professional footer
+
+⸻
+
+2. About Us
+
+Include:
+
+* Company story
+* Mission & Vision
+* Core values
+* Meet the Team section
+* Timeline of company growth
+
+⸻
+
+3. Services
+
+Display services as attractive cards with icons.
+
+Services include:
+
+* Website Development
+* Mobile App Development
+* UI/UX Design
+* Graphic Design
+* Digital Marketing
+* SEO Optimization
+* Cloud Hosting
+* Business Branding
+
+Each service should have:
+
+* Image/Icon
+* Description
+* “Learn More” button
+
+⸻
+
+4. Portfolio
+
+Create a portfolio showcasing completed projects.
+
+Each project should include:
+
+* Screenshot
+* Project Name
+* Category
+* Short Description
+* Live Demo button
+
+Allow filtering by:
+
+* Web Design
+* Mobile Apps
+* Branding
+* Marketing
+
+⸻
+
+5. Pricing
+
+Display three pricing plans:
+
+Starter
+
+Professional
+
+Enterprise
+
+Each should have:
+
+* Monthly price
+* Features
+* Call-to-action button
+
+⸻
+
+6. Blog
+
+Include:
+
+* Featured article
+* Recent posts
+* Categories
+* Search bar
+* Pagination
+
+⸻
+
+7. Contact Page
+
+Include:
+
+* Contact form
+* Google Map placeholder
+* Phone
+* Email
+* Office Address
+* Business Hours
+* Social media links
+
+⸻
+
+8. User Authentication
+
+Create:
+
+* Login Page
+* Registration Page
+* Forgot Password Page
+
+⸻
+
+9. Dashboard (Demo)
+
+After login, users should see:
+
+* Welcome message
+* Recent activity
+* Notifications
+* Orders/Projects
+* Messages
+* Profile
+* Settings
+
+⸻
+
+Features
+
+The website should include:
+
+* Responsive design for desktop, tablet, and mobile
+* Dark and Light mode
+* Smooth animations
+* Sticky navigation bar
+* Search functionality
+* Back-to-top button
+* Loading animation
+* Contact form validation
+* SEO-friendly structure
+* Fast loading speed
+* Accessible design
+
+⸻
+
+Design Requirements
+
+* Clean and modern UI
+* Premium appearance
+* Consistent typography
+* Soft shadows and rounded corners
+* High-quality icons
+* Professional color palette (Blue, White, Purple, and Gray)
+* Attractive hover effects
+* Elegant spacing and alignment
+
+⸻
+
+Technologies (Developer’s Choice)
+
+The developer may use any modern technologies, such as:
+
+* HTML5
+* CSS3
+* JavaScript
+* Bootstrap or Tailwind CSS
+* React, Vue, or Next.js
+* Node.js/PHP (optional for backend)
+
+⸻
+
+Deliverables
+
+The completed website should include:
+
+* Fully responsive design
+* Source code
+* Clean, well-organized code
+* Working navigation
+* Functional forms (demo functionality is acceptable)
+* Basic SEO optimization
+* Cross-browser compatibility
+* Performance optimized
+
+⸻
+
+Evaluation Criteria
+
+The developer will be assessed on:
+
+* UI/UX quality
+* Creativity and originality
+* Responsiveness
+* Attention to detail
+* Code organization
+* Performance
+* Accessibility
+* Animation quality
+* Overall professionalism

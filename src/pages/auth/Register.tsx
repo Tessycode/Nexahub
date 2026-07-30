@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { auth } from '../../lib/api'
+import type { ApiError } from '../../lib/api'
 
 interface Props { onNavigate: (page: string) => void }
 
@@ -51,9 +53,29 @@ export default function Register({ onNavigate }: Props) {
     e.preventDefault()
     if (!validateStep2()) return
     setLoading(true)
-    await new Promise(r => setTimeout(r, 1800))
-    setLoading(false)
-    setSuccess(true)
+    try {
+      await auth.register({
+        first_name: form.firstName,
+        last_name: form.lastName,
+        company: form.company,
+        email: form.email,
+        phone: form.phone,
+        password: form.password,
+        confirm_password: form.confirmPassword,
+        terms: form.terms,
+      })
+      setSuccess(true)
+    } catch (err) {
+      const apiErr = err as ApiError
+      if (apiErr.errors?.email) {
+        setErrors({ email: apiErr.errors.email[0] })
+        setStep(1)
+      } else {
+        setErrors({ submit: apiErr.message || 'Registration failed. Please try again.' })
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
   const requirements = [
